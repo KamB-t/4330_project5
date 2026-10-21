@@ -21,6 +21,8 @@ class ExtractionComplete extends ExtractionUpdate {
 /// HTTPS (never ship the LLM API key in the app) and emit [StageReached]
 /// as the request advances. Failures are thrown as stream errors, and
 /// cancelling the stream subscription should cancel the request.
+/// When [SyllabusUpload.hint] is set this is a re-extraction: pass the
+/// hint to the model so it can fix what the user said was wrong.
 abstract interface class SyllabusExtractor {
   Stream<ExtractionUpdate> extract(SyllabusUpload upload);
 }
@@ -44,6 +46,24 @@ class MockSyllabusExtractor implements SyllabusExtractor {
     yield ExtractionComplete([
       ExtractedEvent(
         id: '1',
+        title: 'Lab report 1',
+        type: EventType.assignment,
+        date: start.add(const Duration(days: 18)),
+        course: 'BIO 2310',
+        confidence: 0.62,
+        sourceQuote: 'Lab report 1 due the Friday of Week 3',
+      ),
+      ExtractedEvent(
+        id: '2',
+        title: 'Read chapters 4 and 5',
+        type: EventType.reading,
+        date: start.add(const Duration(days: 22)),
+        course: 'BIO 2310',
+        confidence: 0.91,
+        sourceQuote: 'Week 4: Campbell Biology, ch. 4–5',
+      ),
+      ExtractedEvent(
+        id: '3',
         title: 'Midterm exam',
         type: EventType.exam,
         date: start.add(const Duration(days: 49)),
@@ -53,13 +73,23 @@ class MockSyllabusExtractor implements SyllabusExtractor {
         sourceQuote: 'Midterm: Week 8, Tuesday, 2:00 PM',
       ),
       ExtractedEvent(
-        id: '2',
-        title: 'Lab report 1',
-        type: EventType.assignment,
-        date: start.add(const Duration(days: 18)),
+        id: '4',
+        title: 'Group project proposal',
+        type: EventType.project,
+        date: start.add(const Duration(days: 60)),
         course: 'BIO 2310',
-        confidence: 0.62,
-        sourceQuote: 'Lab report 1 due the Friday of Week 3',
+        confidence: 0.55,
+        sourceQuote: 'Proposal due before Thanksgiving break',
+      ),
+      ExtractedEvent(
+        id: '5',
+        title: 'Final exam',
+        type: EventType.exam,
+        date: start.add(const Duration(days: 105)),
+        course: 'BIO 2310',
+        time: '8:00 AM',
+        confidence: 0.97,
+        sourceQuote: 'Final exam: December 8, 8:00 AM',
       ),
     ]);
   }
