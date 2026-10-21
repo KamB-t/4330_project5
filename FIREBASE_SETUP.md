@@ -1,0 +1,75 @@
+# Firebase history
+
+Project: `proj5swsys`. The registered Firebase app is **Syllabus to Calendar Web**.
+Only the Flutter web target is configured at present.
+
+## Run
+
+```powershell
+flutter pub get
+flutter run -d chrome --web-port 5174
+```
+
+On Windows, Flutter may request Developer Mode to create plugin symlinks. Enable
+it in Windows Settings if dependency installation reports this requirement.
+
+## How it works
+
+The app initializes Firebase and reuses the current Firebase Auth user, or signs
+in anonymously. Each submission writes metadata under
+`users/{uid}/uploads/{uploadId}`. A live Firestore query shows the latest 20
+entries ordered by server upload time. Older records remain in Firestore.
+No PDF contents or extracted events are stored by this integration.
+
+The Account tab offers Google sign-in and sign-out. Linking a guest to a new
+Google-backed Firebase account preserves its UID and existing history. Signing
+in with that Google account on another device loads the same Firestore path.
+If the Google account already belongs to another Firebase user, the app asks
+before switching: it loads that account's history and does not migrate guest
+uploads. Canceling keeps the guest account and its history accessible. Guest
+history is never automatically deleted. Signing out creates a fresh guest and
+clears the old account's routes and visible history.
+
+Anonymous authentication preserves history for that browser profile and origin.
+Keep the same localhost port when testing. Private browsing, clearing site data,
+or using another device creates a different guest account. Link a permanent
+account for cross-device access. Flutter's temporary Chrome profile
+may also reset between debug sessions; use a persistent browser profile to test
+restart persistence.
+
+The file picker, AI extraction, account connections, and calendar save remain
+mock implementations. The app reports history connection/write failures rather
+than silently switching to session-only storage.
+
+## Console configuration
+
+- Enable Authentication > Sign-in method > Anonymous and Google. Google's
+  public-facing project name is **Syllabus to Calendar**, with the project
+  owner's email as the support contact.
+- In Authentication > Settings > Authorized domains, include `localhost` and
+  any hostnames where the web app actually runs. Use `localhost` for local
+  testing; add `127.0.0.1` only if using that address.
+- Create the default Cloud Firestore database in production mode.
+- Publish the contents of `firestore.rules` under Firestore > Rules, or use
+  `firebase deploy --only firestore:rules --project proj5swsys` after Firebase CLI login.
+- Rules permit each signed-in user to read and create only their own upload
+  metadata, validate its fields, and reject updates and deletes. Other paths are
+  denied by default. These same rules cover Google users without modification.
+
+Google app sign-in requests basic identity only. It does not enable calendar
+writing; the existing calendar connection and save actions remain mocked.
+
+The Firebase client configuration in `lib/firebase_options.dart` is public app
+configuration, not a server credential. Never commit service-account keys or AI
+provider secrets. Additional platforms should be registered and configured using
+the official FlutterFire CLI before running them.
+
+## Checks
+
+```powershell
+flutter test
+flutter analyze
+flutter build web
+```
+
+Widget tests inject in-memory history and do not contact the live project.
