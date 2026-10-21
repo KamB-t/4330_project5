@@ -1,28 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../models/syllabus.dart';
 import '../theme/app_theme.dart';
 import '../widgets/aurora_background.dart';
-
-/// A syllabus the user has selected. Swap in your real picker result
-/// (e.g. from the file_picker package) by mapping it to this type.
-class PickedSyllabus {
-  const PickedSyllabus({required this.name, required this.sizeBytes});
-
-  final String name;
-  final int sizeBytes;
-}
-
-class SyllabusUpload {
-  const SyllabusUpload({
-    required this.file,
-    required this.semesterStart,
-    required this.timeZone,
-  });
-
-  final PickedSyllabus file;
-  final DateTime semesterStart;
-  final String timeZone;
-}
+import '../widgets/step_header.dart';
 
 const _timeZones = <String>[
   'Eastern (ET)',
@@ -98,7 +79,7 @@ class _UploadScreenState extends State<UploadScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const _StepHeader(step: 1, label: 'Upload'),
+                      const StepHeader(step: 1, label: 'Upload'),
                       const SizedBox(height: 28),
                       Text(
                         'Add your syllabus',
@@ -159,50 +140,6 @@ class _UploadScreenState extends State<UploadScreen> {
 }
 
 // ---------------------------------------------------------------------------
-
-class _StepHeader extends StatelessWidget {
-  const _StepHeader({required this.step, required this.label});
-
-  final int step;
-  final String label;
-
-  static const _total = 3;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'STEP $step OF $_total  ·  ${label.toUpperCase()}',
-          style: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 1.4,
-            color: AppColors.tanDeep,
-          ),
-        ),
-        const SizedBox(height: 10),
-        Row(
-          children: [
-            for (var i = 1; i <= _total; i++) ...[
-              Expanded(
-                child: Container(
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: i <= step ? AppColors.tan : AppColors.line,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              if (i < _total) const SizedBox(width: 6),
-            ],
-          ],
-        ),
-      ],
-    );
-  }
-}
 
 class _SectionLabel extends StatelessWidget {
   const _SectionLabel(this.label);
