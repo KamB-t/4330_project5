@@ -1,9 +1,30 @@
-/// A syllabus the user has selected. Map your file picker result to this.
+import 'dart:typed_data';
+
+/// Largest syllabus we accept. Keep in sync with MAX_FILE_BYTES in the Worker.
+const int maxSyllabusBytes = 5 * 1024 * 1024;
+
+/// Thrown by the file picker with a message that is safe to show the user.
+class SyllabusFileException implements Exception {
+  const SyllabusFileException(this.message);
+  final String message;
+
+  @override
+  String toString() => message;
+}
+
+/// A syllabus the user has selected. [bytes] is held in memory only; it is
+/// null for entries rebuilt from upload history, because files are never
+/// stored.
 class PickedSyllabus {
-  const PickedSyllabus({required this.name, required this.sizeBytes});
+  const PickedSyllabus({
+    required this.name,
+    required this.sizeBytes,
+    this.bytes,
+  });
 
   final String name;
   final int sizeBytes;
+  final Uint8List? bytes;
 }
 
 /// Everything collected on the upload screen. [hint] carries the user's
