@@ -104,8 +104,8 @@ class _ProcessingScreenState extends State<ProcessingScreen> {
                       const SizedBox(height: 8),
                       Text(
                         failed
-                            ? 'We couldn’t finish reading this file. Your '
-                                'details are saved, so you can try again.'
+                            ? '${_error is ExtractionException ? '$_error ' : 'We couldn’t finish reading this file. '}'
+                                'Your details are saved, so you can try again.'
                             : 'This usually takes under a minute. '
                                 'You’ll review every date before it’s added.',
                         style: text.bodyLarge?.copyWith(

@@ -15,8 +15,18 @@ import 'screens/history_screen.dart';
 import 'screens/account_screen.dart';
 import 'services/account_session.dart';
 import 'services/syllabus_extractor.dart';
+import 'services/streaming_client.dart';
+import 'services/syllabus_picker.dart';
 import 'services/upload_history.dart';
 import 'theme/app_theme.dart';
+
+/// Address of the extraction Worker. Running the app normally uses the
+/// deployed Worker. To test a local Worker (`wrangler dev`), override it:
+/// `flutter run -d chrome --dart-define=EXTRACT_URL=http://localhost:8787`
+const _extractUrl = String.fromEnvironment(
+  'EXTRACT_URL',
+  defaultValue: 'https://syllabus-proxy.project5.workers.dev',
+);
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -34,6 +44,12 @@ class _FirebaseBootstrapState extends State<FirebaseBootstrap> {
   late Future<FirebaseAccountSession> _setup = _connect();
   FirebaseAccountSession? _session;
   final Map<String, UploadHistoryStore> _stores = {};
+  final SyllabusExtractor _extractor = ProxySyllabusExtractor(
+    endpoint: Uri.parse(_extractUrl),
+    clientFactory: streamingClient,
+    // Reads the current user lazily; the SDK refreshes expired tokens.
+    idToken: () async => FirebaseAuth.instance.currentUser?.getIdToken(),
+  );
 
   Future<FirebaseAccountSession> _connect() async {
     if (!kIsWeb) throw UnsupportedError('Firebase is configured for web only.');
@@ -84,6 +100,8 @@ class _FirebaseBootstrapState extends State<FirebaseBootstrap> {
               // An identity switch discards routes, form state and old history.
               key: ValueKey(account.id),
               accountSession: session,
+              extractor: _extractor,
+              pickFile: pickSyllabusFile,
               historyStore: _stores.putIfAbsent(
                 account.id,
                 () => FirestoreUploadHistory(
@@ -127,13 +145,17 @@ class _FirebaseBootstrapState extends State<FirebaseBootstrap> {
 class SyllabusApp extends StatelessWidget {
   const SyllabusApp({
     super.key,
-    this.extractor = const MockSyllabusExtractor(),
+    required this.extractor,
+    required this.pickFile,
     this.historyStore,
     this.accountSession,
   });
 
-  /// Swap in the real LLM-backed extractor when it exists.
   final SyllabusExtractor extractor;
+
+  /// Opens the file picker; returns null if cancelled and may throw a
+  /// [SyllabusFileException] for unusable files.
+  final Future<PickedSyllabus?> Function() pickFile;
   final UploadHistoryStore? historyStore;
   final AccountSession? accountSession;
 
@@ -192,11 +214,7 @@ class SyllabusApp extends StatelessWidget {
         builder: (context) => _UploadHome(
           historyStore: historyStore,
           accountSession: accountSession,
-          // TODO: replace with a real picker (e.g. file_picker, PDF only).
-          onPickFile: () async => const PickedSyllabus(
-            name: 'BIO_2310_Syllabus_Fall2026.pdf',
-            sizeBytes: 421888,
-          ),
+          onPickFile: pickFile,
           onExtract: (upload) =>
               Navigator.of(context).push(_processing(context, upload)),
         ),
@@ -262,6 +280,19 @@ class _UploadHomeState extends State<_UploadHome> {
 
   Future<void> _extract(SyllabusUpload upload) async {
     if (_saving) return;
+    // History keeps only metadata, never the file, so a past upload has to
+    // be chosen again before it can be read.
+    if (upload.file.bytes == null) {
+      setState(() => _tab = 0);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'We don’t store your syllabus. Choose the PDF again to extract it.',
+          ),
+        ),
+      );
+      return;
+    }
     setState(() => _saving = true);
     try {
       await _store.add(upload);

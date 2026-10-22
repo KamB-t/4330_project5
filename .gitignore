@@ -11,6 +11,12 @@
 .svn/
 .swiftpm/
 migrate_working_dir/
+.dev.vars
+.env
+.env.*
+worker/.dev.vars
+.wrangler/
+node_modules/
 
 # IntelliJ related
 *.iml

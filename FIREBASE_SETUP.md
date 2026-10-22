@@ -37,8 +37,22 @@ account for cross-device access. Flutter's temporary Chrome profile
 may also reset between debug sessions; use a persistent browser profile to test
 restart persistence.
 
-The file picker, AI extraction, account connections, and calendar save remain
-mock implementations. The app reports history connection/write failures rather
+The file picker and AI extraction are real. Account connections and calendar
+save remain mock implementations.
+
+## AI extraction
+
+The app never holds an AI key. It sends the PDF and the user's Firebase ID
+token to a Cloudflare Worker, which verifies the token, calls Gemini with a
+secret key, and streams back its real progress (upload received, Gemini
+reading, dates found, checking) followed by the events. The app uses the deployed Worker by default, so running it from the IDE needs
+no terminal flags. Chrome must be the selected device (the project has a
+`.vscode/launch.json` that selects it). The Worker allows any `localhost` port.
+
+To test a local Worker instead, run `npx wrangler dev` and start the app with
+`--dart-define=EXTRACT_URL=http://localhost:8787`.
+Syllabi are held in memory only;
+upload history stores metadata, so "Extract again" asks you to re-select the file. The app reports history connection/write failures rather
 than silently switching to session-only storage.
 
 ## Console configuration
