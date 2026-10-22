@@ -41,8 +41,13 @@ class _UploadScreenState extends State<UploadScreen> {
   bool get _ready => _file != null && _start != null;
 
   Future<void> _pick() async {
-    final picked = await widget.onPickFile();
-    if (picked != null && mounted) setState(() => _file = picked);
+    try {
+      final picked = await widget.onPickFile();
+      if (picked != null && mounted) setState(() => _file = picked);
+    } on SyllabusFileException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+    }
   }
 
   Future<void> _pickDate() async {
@@ -202,7 +207,7 @@ class _DropZone extends StatelessWidget {
                   ),
                   const SizedBox(height: 6),
                   const Text(
-                    'Tap to browse  ·  PDF up to 10 MB',
+                    'Tap to browse  ·  PDF up to 5 MB',
                     style: TextStyle(fontSize: 14, color: AppColors.stone),
                   ),
                 ],
