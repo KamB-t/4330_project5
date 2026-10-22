@@ -1,0 +1,24 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId}/uploads/{uploadId} {
+      function ownsHistory() {
+        return request.auth != null && request.auth.uid == userId;
+      }
+      allow read: if ownsHistory();
+      allow create: if ownsHistory()
+        && request.resource.data.keys().hasAll(['fileName', 'sizeBytes', 'semesterStart', 'timeZone', 'uploadedAt'])
+        && request.resource.data.keys().hasOnly(['fileName', 'sizeBytes', 'semesterStart', 'timeZone', 'uploadedAt'])
+        && request.resource.data.fileName is string
+        && request.resource.data.fileName.size() > 0
+        && request.resource.data.fileName.size() <= 255
+        && request.resource.data.sizeBytes is int
+        && request.resource.data.sizeBytes >= 0
+        && request.resource.data.sizeBytes <= 10485760
+        && request.resource.data.semesterStart is timestamp
+        && request.resource.data.timeZone in ['Eastern (ET)', 'Central (CT)', 'Mountain (MT)', 'Pacific (PT)', 'Alaska (AKT)', 'Hawaii (HT)']
+        && request.resource.data.uploadedAt == request.time;
+      allow update, delete: if false;
+    }
+  }
+}

@@ -1,30 +1,58 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:app5/main.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  testWidgets('History records submissions and preserves the upload form', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(const SyllabusApp());
+    await tester.tap(find.text('History'));
+    await tester.pumpAndSettle();
+    expect(find.text('No uploads yet'), findsOneWidget);
+    await tester.tap(find.text('Upload a syllabus'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Choose a PDF'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Select a date'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('OK'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Extract dates'));
+    await tester.pump();
+    // Return during processing; the submission still belongs in history.
+    final context = tester.element(find.byType(Navigator).first);
+    Navigator.of(context).pop();
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('History'));
+    await tester.pumpAndSettle();
+    expect(find.text('No uploads yet'), findsNothing);
+    expect(find.text('BIO_2310_Syllabus_Fall2026.pdf'), findsOneWidget);
+    expect(find.text('Extract again'), findsOneWidget);
+    await tester.tap(find.text('Upload'));
+    await tester.pumpAndSettle();
+    expect(find.text('BIO_2310_Syllabus_Fall2026.pdf'), findsOneWidget);
+    expect(
+      tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
+      isNotNull,
+    );
+  });
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+  testWidgets('Extract is disabled until a file and date are set', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(const SyllabusApp());
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
+    expect(find.text('Add your syllabus'), findsOneWidget);
+    expect(
+      tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
+      isNull,
+    );
+
+    await tester.tap(find.text('Choose a PDF'));
     await tester.pump();
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    expect(find.text('BIO_2310_Syllabus_Fall2026.pdf'), findsOneWidget);
   });
 }
