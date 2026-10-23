@@ -45,15 +45,6 @@ class ExtractionException implements Exception {
 /// Supplies the signed-in user's Firebase ID token (null if signed out).
 typedef IdTokenProvider = Future<String?> Function();
 
-const _ianaZones = {
-  'Eastern (ET)': 'America/New_York',
-  'Central (CT)': 'America/Chicago',
-  'Mountain (MT)': 'America/Denver',
-  'Pacific (PT)': 'America/Los_Angeles',
-  'Alaska (AKT)': 'America/Anchorage',
-  'Hawaii (HT)': 'Pacific/Honolulu',
-};
-
 /// Calls the Cloudflare Worker proxy, which holds the Gemini key.
 ///
 /// The Worker answers with newline-delimited JSON as it works, and each
@@ -111,7 +102,7 @@ class ProxySyllabusExtractor implements SyllabusExtractor {
             'fileBase64': base64Encode(bytes),
             'mimeType': 'application/pdf',
             'semesterStart': _isoDate(upload.semesterStart),
-            'timeZone': _ianaZones[upload.timeZone] ?? upload.timeZone,
+            'timeZone': timeZoneByLabel(upload.timeZone)?.iana ?? upload.timeZone,
             if (upload.hint != null && upload.hint!.trim().isNotEmpty)
               'hint': upload.hint!.trim(),
           });

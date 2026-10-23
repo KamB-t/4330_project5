@@ -5,15 +5,6 @@ import '../theme/app_theme.dart';
 import '../widgets/aurora_background.dart';
 import '../widgets/step_header.dart';
 
-const _timeZones = <String>[
-  'Eastern (ET)',
-  'Central (CT)',
-  'Mountain (MT)',
-  'Pacific (PT)',
-  'Alaska (AKT)',
-  'Hawaii (HT)',
-];
-
 const _months = [
   'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
@@ -36,7 +27,7 @@ class UploadScreen extends StatefulWidget {
 class _UploadScreenState extends State<UploadScreen> {
   PickedSyllabus? _file;
   DateTime? _start;
-  String _zone = _timeZones[1];
+  String _zone = timeZoneOptions[1].label;
 
   bool get _ready => _file != null && _start != null;
 
@@ -216,8 +207,11 @@ class _UploadScreenState extends State<UploadScreen> {
                         initialValue: _zone,
                         decoration: const InputDecoration(labelText: 'Time zone'),
                         items: [
-                          for (final z in _timeZones)
-                            DropdownMenuItem(value: z, child: Text(z)),
+                          for (final z in timeZoneOptions)
+                            DropdownMenuItem(
+                              value: z.label,
+                              child: Text(z.label),
+                            ),
                         ],
                         onChanged: (z) => setState(() => _zone = z ?? _zone),
                       ),

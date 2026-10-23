@@ -3,6 +3,36 @@ import 'dart:typed_data';
 /// Largest syllabus we accept. Keep in sync with MAX_FILE_BYTES in the Worker.
 const int maxSyllabusBytes = 5 * 1024 * 1024;
 
+/// A time zone the app offers.
+class TimeZoneOption {
+  const TimeZoneOption(this.label, this.iana);
+
+  /// Shown in the app and stored in upload history.
+  final String label;
+
+  /// IANA name, used by the extraction Worker and in .ics files.
+  final String iana;
+}
+
+/// The zones offered on the upload screen. Labels must match the list in
+/// firestore.rules.
+const timeZoneOptions = <TimeZoneOption>[
+  TimeZoneOption('Eastern (ET)', 'America/New_York'),
+  TimeZoneOption('Central (CT)', 'America/Chicago'),
+  TimeZoneOption('Mountain (MT)', 'America/Denver'),
+  TimeZoneOption('Pacific (PT)', 'America/Los_Angeles'),
+  TimeZoneOption('Alaska (AKT)', 'America/Anchorage'),
+  TimeZoneOption('Hawaii (HT)', 'Pacific/Honolulu'),
+];
+
+/// The zone with this [label], or null if the label is unknown.
+TimeZoneOption? timeZoneByLabel(String label) {
+  for (final zone in timeZoneOptions) {
+    if (zone.label == label) return zone;
+  }
+  return null;
+}
+
 /// Thrown by the file picker with a message that is safe to show the user.
 class SyllabusFileException implements Exception {
   const SyllabusFileException(this.message);
