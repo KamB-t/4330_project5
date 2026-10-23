@@ -3,7 +3,7 @@ import 'dart:convert';
 import '../models/syllabus.dart';
 
 /// Parses a clock time such as "2:00 PM", "11:59pm", "2 p.m.", "14:30",
-/// "by 5 PM" or "noon". For a range ("2:00 PM - 3:15 PM") only the start is used. Returns
+/// "by 5 PM", "noon" or "midnight". For a range ("2:00 PM - 3:15 PM") only the start is used. Returns
 /// null when it can't be read, and the event becomes an all-day event.
 ({int hour, int minute})? parseClockTime(String? raw) {
   if (raw == null) return null;
@@ -15,6 +15,8 @@ import '../models/syllabus.dart';
   text = text.replaceFirst(RegExp(r' \(?(?:[ecmp][sd]?t|ak[sd]?t|hst?)\)?$'), '');
   text = text.split(RegExp(r'\s*[-–—]\s*')).first.trim();
   if (text == 'noon') return (hour: 12, minute: 0);
+  // A midnight deadline means the end of that day, not its first minute.
+  if (text == 'midnight') return (hour: 23, minute: 59);
 
   final twelveHour = RegExp(
     r'^(\d{1,2})(?::(\d{2}))?\s*([ap])\.?\s*m?\.?$',
