@@ -22,6 +22,9 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Select a date'));
     await tester.pumpAndSettle();
+    // Month first, then the day calendar.
+    await tester.tap(find.text('Jan'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('OK'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Extract dates'));

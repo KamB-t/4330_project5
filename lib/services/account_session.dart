@@ -57,12 +57,14 @@ class FirebaseAccountSession extends AccountSession {
       ..setCustomParameters({'prompt': 'select_account'});
     final user = _auth.currentUser;
     if (user == null || !user.isAnonymous) {
-      await _auth.signInWithPopup(provider);
+      await _signIn(provider);
       return;
     }
     try {
       // Linking keeps the same UID, so Firestore history stays in place.
-      await user.linkWithPopup(provider);
+      await (kIsWeb
+          ? user.linkWithPopup(provider)
+          : user.linkWithProvider(provider));
     } on FirebaseAuthException catch (error) {
       if (error.code == 'credential-already-in-use') {
         _existingCredential = error.credential;
@@ -79,7 +81,16 @@ class FirebaseAccountSession extends AccountSession {
     if (credential != null) {
       await _auth.signInWithCredential(credential);
     } else {
-      await _auth.signInWithPopup(GoogleAuthProvider());
+      await _signIn(GoogleAuthProvider());
+    }
+  }
+
+  // Web uses a popup window; Android opens Google's sign-in in a browser tab.
+  Future<void> _signIn(AuthProvider provider) async {
+    if (kIsWeb) {
+      await _auth.signInWithPopup(provider);
+    } else {
+      await _auth.signInWithProvider(provider);
     }
   }
 
@@ -105,7 +116,10 @@ class FirebaseAccountSession extends AccountSession {
 String accountErrorMessage(Object error) {
   if (error is FirebaseAuthException) {
     return switch (error.code) {
-      'popup-closed-by-user' || 'cancelled-popup-request' =>
+      'popup-closed-by-user' ||
+      'cancelled-popup-request' ||
+      'canceled' ||
+      'web-context-canceled' =>
         'Sign-in was canceled. Your current history is unchanged.',
       'popup-blocked' =>
         'Allow pop-ups for this site, then try signing in again.',

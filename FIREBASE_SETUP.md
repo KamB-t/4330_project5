@@ -1,7 +1,7 @@
 # Firebase history
 
 Project: `proj5swsys`. The registered Firebase app is **Syllabus to Calendar Web**.
-Only the Flutter web target is configured at present.
+The Flutter web target is configured. Android needs the one-time setup below.
 
 ## Run
 
@@ -87,3 +87,36 @@ flutter build web
 ```
 
 Widget tests inject in-memory history and do not contact the live project.
+
+## Android
+
+The app runs on an Android emulator or phone once the Android app is registered
+in Firebase. This needs someone with the Editor or Owner role on `proj5swsys`
+(or use your own Firebase project and replace the config).
+
+1. Firebase console > Project settings > Your apps > Add app > Android.
+   Package name: `com.example.app5`.
+2. Add your debug SHA-1 (and SHA-256) fingerprint. Each developer's debug key
+   is different, so add one per person:
+   ```
+   keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android -keypass android
+   ```
+   On Windows the keystore is at `%USERPROFILE%\.android\debug.keystore`.
+3. Download `google-services.json`. From it, copy `current_key` into
+   `apiKey` and `mobilesdk_app_id` into `appId` in
+   `firebaseAndroidOptions` in `lib/firebase_options.dart`. These are public
+   client settings, not secrets. The `google-services.json` file itself is not
+   needed in the project.
+4. Use an emulator image that includes Google Play (it has Chrome), because
+   Google sign-in opens in a browser tab.
+5. In Android Studio, pick the emulator and run. The app uses the deployed
+   Worker by default, which accepts Android requests (they send no `Origin`
+   header and are protected by the Firebase sign-in check).
+
+Until step 3 is done, the Android build reuses the web app's settings and runs
+as a guest. Guest history and extraction work, but Google sign-in does not. If
+that fallback is rejected by Firebase, register the app (steps above) or use a
+separate Firebase project: enable Anonymous (and Google) sign-in, create a
+Firestore database with `firestore.rules`, fill in the options, and give the
+Worker the new project ID:
+`npx wrangler secret put EXTRA_FIREBASE_PROJECT_IDS`.
