@@ -37,8 +37,8 @@ account for cross-device access. Flutter's temporary Chrome profile
 may also reset between debug sessions; use a persistent browser profile to test
 restart persistence.
 
-The file picker and AI extraction are real. Account connections and calendar
-save remain mock implementations.
+The file picker, AI extraction and calendar saving are all real. Saving needs
+no extra console setup; see "Saving to calendars" below.
 
 ## AI extraction
 
@@ -70,13 +70,32 @@ than silently switching to session-only storage.
   metadata, validate its fields, and reject updates and deletes. Other paths are
   denied by default. These same rules cover Google users without modification.
 
-Google app sign-in requests basic identity only. It does not enable calendar
-writing; the existing calendar connection and save actions remain mocked.
+Google app sign-in requests basic identity only. Saving dates never asks for
+calendar permissions, because it works by importing a file.
 
 The Firebase client configuration in `lib/firebase_options.dart` is public app
 configuration, not a server credential. Never commit service-account keys or AI
 provider secrets. Additional platforms should be registered and configured using
 the official FlutterFire CLI before running them.
+
+## Saving to calendars
+
+Saving builds one iCalendar (`.ics`) file from the confirmed dates
+(`lib/services/ics_builder.dart`). Times the syllabus gives ("2:00 PM",
+"by 11:59 pm CT", "9:30-10:45 AM", "midnight") become timed events in the
+chosen zone, ending at the range's end when there is one; anything else is an
+all-day event.
+
+| Destination | Web | Android / iOS |
+| --- | --- | --- |
+| This phone's calendar | Downloads the file | Opens it in a calendar app |
+| Google Calendar | Downloads the file and opens Google Calendar's Import & export page | Opens it in a calendar app (pick Google Calendar) |
+| Outlook / Microsoft 365 | Downloads the file and opens Outlook's Add calendar page | Opens it in a calendar app |
+
+The user is already signed in to their calendar, so the app needs no OAuth
+client, Calendar API, Azure registration or stored tokens. Event UIDs are
+stable, so importing the same syllabus again updates events in calendars that
+honor UIDs.
 
 ## Checks
 
