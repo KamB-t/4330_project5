@@ -1,6 +1,6 @@
 # Firebase history
 
-Project: `proj5swsys`. The registered Firebase app is **Syllabus to Calendar Web**.
+Project: `proj5swsys`. The registered Firebase app is **Syllabus to Calendar Web(Termwise)**.
 The Flutter web target is configured. Android needs the one-time setup below.
 
 ## Run
