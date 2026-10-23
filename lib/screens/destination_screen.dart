@@ -140,11 +140,13 @@ class DestinationTile extends StatelessWidget {
     final (title, subtitle) = switch (destination) {
       SaveDestination.device => (
           'This phone’s calendar',
-          'Downloads a calendar file (.ics) that your calendar app opens.',
+          'Opens the dates in your calendar app, or downloads a calendar '
+              'file (.ics) in the browser.',
         ),
       SaveDestination.google => (
           'Google Calendar',
-          'Downloads the file and opens Google Calendar’s import page.',
+          'In the browser, downloads the file and opens Google Calendar’s '
+              'import page. On a phone, pick Google Calendar to open it.',
         ),
       SaveDestination.microsoft => (
           'Outlook / Microsoft 365',
