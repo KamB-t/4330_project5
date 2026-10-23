@@ -13,8 +13,10 @@ import 'screens/upload_screen.dart';
 import 'screens/history_screen.dart';
 import 'screens/account_screen.dart';
 import 'services/account_session.dart';
+import 'services/calendar_import.dart';
 import 'services/ics_builder.dart';
 import 'services/ics_delivery.dart';
+import 'services/open_page.dart';
 import 'services/syllabus_extractor.dart';
 import 'services/streaming_client.dart';
 import 'services/syllabus_picker.dart';
@@ -187,22 +189,29 @@ class SyllabusApp extends StatelessWidget {
           _processing(context, upload.copyWith(hint: note)),
         ),
         onSave: (saved, destination) =>
-            _saveToCalendar(context, upload, saved),
+            _saveToCalendar(context, upload, saved, destination),
       ),
     );
   }
 
-  /// Builds the calendar file and hands it to the phone (or browser). Stays on
-  /// the review screen when something goes wrong, so nothing is lost.
+  /// Builds the calendar file and hands it to the phone (or browser). For
+  /// Google Calendar and Outlook on the web it also opens the page that
+  /// imports the file. Stays on the review screen when something goes wrong,
+  /// so nothing is lost.
   Future<void> _saveToCalendar(
     BuildContext context,
     SyllabusUpload upload,
     List<ExtractedEvent> events,
+    SaveDestination destination,
   ) async {
     final nav = Navigator.of(context);
     final messenger = ScaffoldMessenger.of(context);
-    void say(String message) =>
-        messenger.showSnackBar(SnackBar(content: Text(message)));
+    void say(String message, {bool long = false}) => messenger.showSnackBar(
+      SnackBar(
+        content: Text(message),
+        duration: Duration(seconds: long ? 10 : 4),
+      ),
+    );
 
     if (events.isEmpty) {
       say('Select at least one date to save.');
@@ -212,21 +221,26 @@ class SyllabusApp extends StatelessWidget {
     try {
       final ics = IcsBuilder.build(events, timeZoneLabel: upload.timeZone);
       final name = _icsFileName(upload.file.name);
+      // Open the import page before any await: browsers only allow a new tab
+      // while the tap that asked for it is still being handled.
+      final importUrl = importPageUrl(destination);
+      final openedImportPage =
+          importUrl != null && openPageInNewTab(importUrl);
       final result = await deliverIcs(ics, name);
-      final count = events.length;
-      final dates = count == 1 ? '1 date' : '$count dates';
-      switch (result) {
-        case IcsDeliveryResult.opened:
-          nav.popUntil((route) => route.isFirst);
-          say('Opened $dates in your calendar app. Confirm there to add them.');
-        case IcsDeliveryResult.downloaded:
-          nav.popUntil((route) => route.isFirst);
-          say('Downloaded $name with $dates. Open it to add them to your calendar.');
-        case IcsDeliveryResult.noApp:
-          say('No calendar app found on this device to open the file.');
-        case IcsDeliveryResult.failed:
-          say('Could not create the calendar file. Please try again.');
+      if (result == IcsDeliveryResult.opened ||
+          result == IcsDeliveryResult.downloaded) {
+        nav.popUntil((route) => route.isFirst);
       }
+      say(
+        saveMessage(
+          result: result,
+          destination: destination,
+          fileName: name,
+          count: events.length,
+          openedImportPage: openedImportPage,
+        ),
+        long: openedImportPage,
+      );
     } catch (_) {
       say('Could not create the calendar file. Please try again.');
     }
@@ -397,4 +411,27 @@ class _UploadHomeState extends State<_UploadHome> {
       ],
     ),
   );
+}
+
+/// What to tell the user after handing over the calendar file.
+String saveMessage({
+  required IcsDeliveryResult result,
+  required SaveDestination destination,
+  required String fileName,
+  required int count,
+  required bool openedImportPage,
+}) {
+  final dates = count == 1 ? '1 date' : '$count dates';
+  return switch (result) {
+    IcsDeliveryResult.opened =>
+      'Opened $dates in your calendar app. Confirm there to add them.',
+    IcsDeliveryResult.downloaded when openedImportPage =>
+      'Downloaded $fileName with $dates. ${importSteps(destination, fileName)}',
+    IcsDeliveryResult.downloaded =>
+      'Downloaded $fileName with $dates. Open it to add them to your calendar.',
+    IcsDeliveryResult.noApp =>
+      'No calendar app found on this device to open the file.',
+    IcsDeliveryResult.failed =>
+      'Could not create the calendar file. Please try again.',
+  };
 }
