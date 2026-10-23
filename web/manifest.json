@@ -1,11 +1,11 @@
 {
-    "name": "app5",
-    "short_name": "app5",
+    "name": "Syllabus to Calendar",
+    "short_name": "Syllabus Cal",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "Turn a course syllabus into calendar events.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

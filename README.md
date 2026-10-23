@@ -1,8 +1,8 @@
-# Termwise
+# Syllabus to Calendar
 
 Turn a syllabus into calendar events in a few taps.
 
-Termwise reads the dates out of a course syllabus (exams, assignments, deadlines) and gives you a calendar file you can add to any calendar app.
+Syllabus to Calendar reads the dates out of a course syllabus (exams, assignments, deadlines) and gives you a calendar file you can add to any calendar app.
 
 ## How it works
 
