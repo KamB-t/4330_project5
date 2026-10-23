@@ -7,7 +7,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'firebase_options.dart';
 import 'models/syllabus.dart';
-import 'screens/destination_screen.dart';
 import 'screens/processing_screen.dart';
 import 'screens/review_screen.dart';
 import 'screens/upload_screen.dart';
@@ -184,24 +183,9 @@ class SyllabusApp extends StatelessWidget {
       builder: (_) => ReviewScreen(
         upload: upload,
         events: events,
-        connected: const {SaveDestination.device},
         onReparse: (note) => nav.pushReplacement(
           _processing(context, upload.copyWith(hint: note)),
         ),
-        onConnect: (destination) async {
-          // Signing in to this app does not grant access to a Google or
-          // Outlook calendar, and direct sync is not built yet. Say so instead
-          // of pretending to connect. The phone calendar works today.
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                '${saveDestinationName(destination)} sync is not available yet. '
-                'Use the phone calendar; you can import the file into any calendar.',
-              ),
-            ),
-          );
-          return false;
-        },
         onSave: (saved, destination) =>
             _saveToCalendar(context, upload, saved),
       ),

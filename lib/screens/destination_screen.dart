@@ -18,31 +18,14 @@ IconData saveDestinationIcon(SaveDestination d) => switch (d) {
 
 /// Where the confirmed dates will be saved. Shared by the review screen
 /// (which shows the current choice) and the destination screen (where it
-/// is changed), so the choice and sign-in state survive moving between them.
+/// is changed), so the choice survives moving between them. Every
+/// destination works without signing in.
 class SaveSettings extends ChangeNotifier {
-  SaveSettings({Set<SaveDestination> connected = const {SaveDestination.device}})
-      : connected = {...connected};
-
   SaveDestination destination = SaveDestination.device;
-  final Set<SaveDestination> connected;
-  SaveDestination? connecting;
-
-  bool get ready => connected.contains(destination);
 
   void select(SaveDestination d) {
+    if (d == destination) return;
     destination = d;
-    notifyListeners();
-  }
-
-  Future<void> connect(
-    SaveDestination d,
-    Future<bool> Function(SaveDestination) signIn,
-  ) async {
-    connecting = d;
-    notifyListeners();
-    final ok = await signIn(d);
-    connecting = null;
-    if (ok) connected.add(d);
     notifyListeners();
   }
 }
@@ -50,14 +33,9 @@ class SaveSettings extends ChangeNotifier {
 /// Pushed from the review screen at any point; Back returns to the review
 /// with nothing lost.
 class DestinationScreen extends StatelessWidget {
-  const DestinationScreen({
-    super.key,
-    required this.settings,
-    required this.onConnect,
-  });
+  const DestinationScreen({super.key, required this.settings});
 
   final SaveSettings settings;
-  final Future<bool> Function(SaveDestination destination) onConnect;
 
   @override
   Widget build(BuildContext context) {
@@ -98,8 +76,8 @@ class DestinationScreen extends StatelessWidget {
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                'Your dates go to the calendar you pick. '
-                                'You can change this any time before saving.',
+                                'We make a calendar file with your dates. '
+                                'Pick where it goes; no sign-in needed.',
                                 style: text.bodyLarge?.copyWith(
                                   color: AppColors.stone,
                                   height: 1.4,
@@ -118,10 +96,7 @@ class DestinationScreen extends StatelessWidget {
                             child: DestinationTile(
                               destination: d,
                               selected: settings.destination == d,
-                              connected: settings.connected.contains(d),
-                              connecting: settings.connecting == d,
                               onSelect: () => settings.select(d),
-                              onConnect: () => settings.connect(d, onConnect),
                             ),
                           ),
                       ],
@@ -133,26 +108,9 @@ class DestinationScreen extends StatelessWidget {
                       color: AppColors.sand,
                       border: Border(top: BorderSide(color: AppColors.line)),
                     ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        FilledButton(
-                          onPressed: settings.ready
-                              ? () => Navigator.of(context).maybePop()
-                              : null,
-                          child: Text('Use $name'),
-                        ),
-                        if (!settings.ready) ...[
-                          const SizedBox(height: 8),
-                          Text(
-                            'Connect $name to continue',
-                            style: const TextStyle(
-                              fontSize: 13,
-                              color: AppColors.stone,
-                            ),
-                          ),
-                        ],
-                      ],
+                    child: FilledButton(
+                      onPressed: () => Navigator.of(context).maybePop(),
+                      child: Text('Use $name'),
                     ),
                   ),
                 ],
@@ -170,37 +128,28 @@ class DestinationTile extends StatelessWidget {
     super.key,
     required this.destination,
     required this.selected,
-    required this.connected,
-    required this.connecting,
     required this.onSelect,
-    required this.onConnect,
   });
 
   final SaveDestination destination;
   final bool selected;
-  final bool connected;
-  final bool connecting;
   final VoidCallback onSelect;
-  final VoidCallback onConnect;
 
   @override
   Widget build(BuildContext context) {
     final (title, subtitle) = switch (destination) {
       SaveDestination.device => (
           'This phone’s calendar',
-          'Saves to the calendar app on this device. No sign-in needed.',
+          'Downloads a calendar file (.ics) that your calendar app opens.',
         ),
       SaveDestination.google => (
           'Google Calendar',
-          connected
-              ? 'Account linked. Syncs to all your devices.'
-              : 'Sign in to link your Google account.',
+          'Downloads the file and opens Google Calendar’s import page.',
         ),
       SaveDestination.microsoft => (
           'Outlook / Microsoft 365',
-          connected
-              ? 'Account linked. Syncs to all your devices.'
-              : 'Sign in with your school or work account.',
+          'Downloads the file and opens Outlook’s import page. Works with '
+              'school, work and Outlook.com accounts.',
         ),
     };
 
@@ -261,29 +210,6 @@ class DestinationTile extends StatelessWidget {
                     ],
                   ),
                 ),
-                if (connecting)
-                  const Padding(
-                    padding: EdgeInsets.all(14),
-                    child: SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.5,
-                        color: AppColors.tan,
-                      ),
-                    ),
-                  )
-                else if (!connected)
-                  TextButton(onPressed: onConnect, child: const Text('Connect'))
-                else if (destination != SaveDestination.device)
-                  const Padding(
-                    padding: EdgeInsets.all(12),
-                    child: Icon(
-                      Icons.check_circle,
-                      size: 20,
-                      color: AppColors.tan,
-                    ),
-                  ),
               ],
             ),
           ),

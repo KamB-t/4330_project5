@@ -30,24 +30,15 @@ class ReviewScreen extends StatefulWidget {
     super.key,
     required this.upload,
     required this.events,
-    required this.connected,
     required this.onReparse,
-    required this.onConnect,
     required this.onSave,
   });
 
   final SyllabusUpload upload;
   final List<ExtractedEvent> events;
 
-  /// Destinations that are ready to use right now (the on-device calendar
-  /// is normally included; Google / Microsoft need sign-in first).
-  final Set<SaveDestination> connected;
-
   /// Run the extraction again, optionally with the user's note.
   final void Function(String? note) onReparse;
-
-  /// Start sign-in for a linked calendar. Return true once it's linked.
-  final Future<bool> Function(SaveDestination destination) onConnect;
 
   final void Function(List<ExtractedEvent> events, SaveDestination destination)
       onSave;
@@ -58,7 +49,7 @@ class ReviewScreen extends StatefulWidget {
 
 class _ReviewScreenState extends State<ReviewScreen> {
   late final List<ExtractedEvent> _events = List.of(widget.events);
-  late final SaveSettings _save = SaveSettings(connected: widget.connected);
+  final SaveSettings _save = SaveSettings();
   final Set<String> _excluded = {};
   final _hint = TextEditingController();
   bool _onlyFlagged = false;
@@ -113,10 +104,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
   void _openDestination() {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => DestinationScreen(
-          settings: _save,
-          onConnect: widget.onConnect,
-        ),
+        builder: (_) => DestinationScreen(settings: _save),
       ),
     );
   }
@@ -216,7 +204,6 @@ class _ReviewScreenState extends State<ReviewScreen> {
                 builder: (context, _) => _SaveBar(
                   count: count,
                   destination: _save.destination,
-                  destReady: _save.ready,
                   onChoose: _openDestination,
                   onPressed: () => widget.onSave(_included, _save.destination),
                 ),
@@ -512,20 +499,18 @@ class _SaveBar extends StatelessWidget {
   const _SaveBar({
     required this.count,
     required this.destination,
-    required this.destReady,
     required this.onChoose,
     required this.onPressed,
   });
 
   final int count;
   final SaveDestination destination;
-  final bool destReady;
   final VoidCallback onChoose;
   final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) {
-    final ready = count > 0 && destReady;
+    final ready = count > 0;
     final name = saveDestinationName(destination);
     final title = switch (destination) {
       SaveDestination.device => 'Phone calendar',
@@ -583,17 +568,6 @@ class _SaveBar extends StatelessWidget {
                         ],
                       ),
                     ),
-                    if (!destReady) ...[
-                      const Text(
-                        'Not linked',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.clay,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                    ],
                     const Text(
                       'Change',
                       style: TextStyle(
@@ -619,11 +593,9 @@ class _SaveBar extends StatelessWidget {
           ),
           if (!ready) ...[
             const SizedBox(height: 8),
-            Text(
-              count == 0
-                  ? 'Select at least one date to continue'
-                  : 'Connect $name to continue',
-              style: const TextStyle(fontSize: 13, color: AppColors.stone),
+            const Text(
+              'Select at least one date to continue',
+              style: TextStyle(fontSize: 13, color: AppColors.stone),
             ),
           ],
         ],
