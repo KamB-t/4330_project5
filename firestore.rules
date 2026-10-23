@@ -14,7 +14,7 @@ service cloud.firestore {
         && request.resource.data.fileName.size() <= 255
         && request.resource.data.sizeBytes is int
         && request.resource.data.sizeBytes >= 0
-        && request.resource.data.sizeBytes <= 10485760
+        && request.resource.data.sizeBytes <= 5242880
         && request.resource.data.semesterStart is timestamp
         && request.resource.data.timeZone in ['Eastern (ET)', 'Central (CT)', 'Mountain (MT)', 'Pacific (PT)', 'Alaska (AKT)', 'Hawaii (HT)']
         && request.resource.data.uploadedAt == request.time;

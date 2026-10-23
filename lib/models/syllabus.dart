@@ -1,7 +1,7 @@
 import 'dart:typed_data';
 
 /// Largest syllabus we accept. Keep in sync with MAX_FILE_BYTES in the Worker.
-const int maxSyllabusBytes = 5 * 1024 * 1024;
+const int maxSyllabusBytes = 5 * 1024 * 1024; // also in firestore.rules
 
 /// A time zone the app offers.
 class TimeZoneOption {
