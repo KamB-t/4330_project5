@@ -47,3 +47,6 @@ jobs:
 
       - name: 🌐 Build web
         run: flutter build web --release
+
+      - name: 🔍 Analyze
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings
