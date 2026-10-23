@@ -34,6 +34,27 @@ class FirebaseAccountSession extends AccountSession {
   }
 
   final FirebaseAuth _auth;
+  Future<String> authorizeCalendar() async {
+    final user = _auth.currentUser;
+    if (user == null || user.isAnonymous) {
+      throw StateError(
+        'Sign in with Google on the Account tab before extracting dates to save to Google Calendar.',
+      );
+    }
+    final provider = GoogleAuthProvider()
+      ..addScope('https://www.googleapis.com/auth/calendar.events.owned');
+    final result = await (kIsWeb
+        ? user.reauthenticateWithPopup(provider)
+        : user.reauthenticateWithProvider(provider));
+    final token = result.credential?.accessToken;
+    if (token == null || token.isEmpty) {
+      throw StateError(
+        'Google did not grant calendar access. Connect again and allow calendar permission.',
+      );
+    }
+    return token;
+  }
+
   late final StreamSubscription<User?> _subscription;
   AuthCredential? _existingCredential;
 

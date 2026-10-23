@@ -9,7 +9,9 @@ Termwise reads the dates out of a course syllabus (exams, assignments, deadlines
 1. **Upload** your syllabus (up to 5 MB), then choose the semester start date and your time zone.
 2. **Extract**: the file is sent to our backend, a Cloudflare Worker that holds the Gemini API key, and the extracted events stream back as it works.
 3. **Review** the events. If something is wrong, add a note such as "you missed the final exam" and re-extract.
-4. **Export** the events as an `.ics` file for your calendar.
+4. **Save** selected events directly to Google Calendar, or export an `.ics` file
+   for another calendar. Sign in on the Account tab before extracting to use
+   Google Calendar; connect it from the review screen's destination picker.
 
 The Account tab supports Google sign-in. Each upload's metadata is saved to your history. Syllabus files and extracted events are not stored.
 

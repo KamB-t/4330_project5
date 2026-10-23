@@ -5,27 +5,35 @@ import '../theme/app_theme.dart';
 import '../widgets/aurora_background.dart';
 
 String saveDestinationName(SaveDestination d) => switch (d) {
-      SaveDestination.device => 'phone calendar',
-      SaveDestination.google => 'Google Calendar',
-      SaveDestination.microsoft => 'Outlook',
-    };
+  SaveDestination.device => 'phone calendar',
+  SaveDestination.google => 'Google Calendar',
+  SaveDestination.microsoft => 'Outlook',
+};
 
 IconData saveDestinationIcon(SaveDestination d) => switch (d) {
-      SaveDestination.device => Icons.smartphone_rounded,
-      SaveDestination.google => Icons.event_available_outlined,
-      SaveDestination.microsoft => Icons.cloud_outlined,
-    };
+  SaveDestination.device => Icons.smartphone_rounded,
+  SaveDestination.google => Icons.event_available_outlined,
+  SaveDestination.microsoft => Icons.cloud_outlined,
+};
 
 /// Where the confirmed dates will be saved. Shared by the review screen
 /// (which shows the current choice) and the destination screen (where it
 /// is changed), so the choice and sign-in state survive moving between them.
 class SaveSettings extends ChangeNotifier {
-  SaveSettings({Set<SaveDestination> connected = const {SaveDestination.device}})
-      : connected = {...connected};
+  SaveSettings({
+    Set<SaveDestination> connected = const {SaveDestination.device},
+  }) : connected = {...connected};
 
   SaveDestination destination = SaveDestination.device;
   final Set<SaveDestination> connected;
   SaveDestination? connecting;
+  bool _disposed = false;
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
 
   bool get ready => connected.contains(destination);
 
@@ -38,12 +46,16 @@ class SaveSettings extends ChangeNotifier {
     SaveDestination d,
     Future<bool> Function(SaveDestination) signIn,
   ) async {
+    if (connecting != null) return;
     connecting = d;
     notifyListeners();
-    final ok = await signIn(d);
-    connecting = null;
-    if (ok) connected.add(d);
-    notifyListeners();
+    try {
+      final ok = await signIn(d);
+      if (ok) connected.add(d);
+    } finally {
+      connecting = null;
+      if (!_disposed) notifyListeners();
+    }
   }
 }
 
@@ -187,28 +199,30 @@ class DestinationTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final (title, subtitle) = switch (destination) {
       SaveDestination.device => (
-          'This phone’s calendar',
-          'Saves to the calendar app on this device. No sign-in needed.',
-        ),
+        'This phone’s calendar',
+        'Saves to the calendar app on this device. No sign-in needed.',
+      ),
       SaveDestination.google => (
-          'Google Calendar',
-          connected
-              ? 'Account linked. Syncs to all your devices.'
-              : 'Sign in to link your Google account.',
-        ),
+        'Google Calendar',
+        connected
+            ? 'Saves selected dates directly to your primary calendar.'
+            : 'Allow Termwise to add dates to your primary Google calendar.',
+      ),
       SaveDestination.microsoft => (
-          'Outlook / Microsoft 365',
-          connected
-              ? 'Account linked. Syncs to all your devices.'
-              : 'Sign in with your school or work account.',
-        ),
+        'Outlook / Microsoft 365',
+        connected
+            ? 'Account linked. Syncs to all your devices.'
+            : 'Sign in with your school or work account.',
+      ),
     };
 
     return Semantics(
       selected: selected,
       inMutuallyExclusiveGroup: true,
       child: Material(
-        color: selected ? AppColors.tan.withValues(alpha: 0.1) : AppColors.paper,
+        color: selected
+            ? AppColors.tan.withValues(alpha: 0.1)
+            : AppColors.paper,
         borderRadius: BorderRadius.circular(16),
         child: InkWell(
           borderRadius: BorderRadius.circular(16),

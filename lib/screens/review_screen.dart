@@ -7,8 +7,18 @@ import 'destination_screen.dart';
 import '../widgets/step_header.dart';
 
 const _months = [
-  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
 ];
 const _weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -17,11 +27,15 @@ String _fmtDate(DateTime d) =>
 
 /// (badge label, accent, text color)
 (String, Color, Color) _typeStyle(EventType t) => switch (t) {
-      EventType.exam => ('EXAM', AppColors.clay, AppColors.clay),
-      EventType.assignment => ('DUE', AppColors.tan, AppColors.tanDeep),
-      EventType.reading => ('READING', AppColors.ochre, const Color(0xFF7A5A12)),
-      EventType.project => ('PROJECT', const Color(0xFF7A5A55), const Color(0xFF5E4440)),
-    };
+  EventType.exam => ('EXAM', AppColors.clay, AppColors.clay),
+  EventType.assignment => ('DUE', AppColors.tan, AppColors.tanDeep),
+  EventType.reading => ('READING', AppColors.ochre, const Color(0xFF7A5A12)),
+  EventType.project => (
+    'PROJECT',
+    const Color(0xFF7A5A55),
+    const Color(0xFF5E4440),
+  ),
+};
 
 /// Step 3: confirm what was extracted, fix or re-extract, then choose
 /// where to save.
@@ -49,8 +63,11 @@ class ReviewScreen extends StatefulWidget {
   /// Start sign-in for a linked calendar. Return true once it's linked.
   final Future<bool> Function(SaveDestination destination) onConnect;
 
-  final void Function(List<ExtractedEvent> events, SaveDestination destination)
-      onSave;
+  final Future<void> Function(
+    List<ExtractedEvent> events,
+    SaveDestination destination,
+  )
+  onSave;
 
   @override
   State<ReviewScreen> createState() => _ReviewScreenState();
@@ -62,6 +79,17 @@ class _ReviewScreenState extends State<ReviewScreen> {
   final Set<String> _excluded = {};
   final _hint = TextEditingController();
   bool _onlyFlagged = false;
+  bool _saving = false;
+
+  Future<void> _saveDates() async {
+    if (_saving) return;
+    setState(() => _saving = true);
+    try {
+      await widget.onSave(_included, _save.destination);
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
 
   @override
   void dispose() {
@@ -113,10 +141,8 @@ class _ReviewScreenState extends State<ReviewScreen> {
   void _openDestination() {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => DestinationScreen(
-          settings: _save,
-          onConnect: widget.onConnect,
-        ),
+        builder: (_) =>
+            DestinationScreen(settings: _save, onConnect: widget.onConnect),
       ),
     );
   }
@@ -124,104 +150,114 @@ class _ReviewScreenState extends State<ReviewScreen> {
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
-    final shown =
-        _onlyFlagged ? _events.where((e) => e.needsReview).toList() : _events;
+    final shown = _onlyFlagged
+        ? _events.where((e) => e.needsReview).toList()
+        : _events;
     final count = _included.length;
 
-    return Scaffold(
-      body: AuroraBackground(
-        child: SafeArea(
-          child: Column(
-            children: [
-              Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-                  children: [
-                    const StepHeader(step: 3, label: 'Review'),
-                    const SizedBox(height: 28),
-                    Text(
-                      'Review your dates',
-                      style: text.headlineMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: -0.5,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'We found ${_events.length} '
-                      '${_events.length == 1 ? 'item' : 'items'} in '
-                      '${widget.upload.file.name}. Check each one, then '
-                      'save them to your calendar.',
-                      style: text.bodyLarge?.copyWith(
-                        color: AppColors.stone,
-                        height: 1.4,
-                      ),
-                    ),
-                    const SizedBox(height: 18),
-                    Wrap(
-                      spacing: 8,
+    return PopScope(
+      canPop: !_saving,
+      child: AbsorbPointer(
+        absorbing: _saving,
+        child: Scaffold(
+          body: AuroraBackground(
+            child: SafeArea(
+              child: Column(
+                children: [
+                  Expanded(
+                    child: ListView(
+                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
                       children: [
-                        _FilterChip(
-                          label: 'All (${_events.length})',
-                          selected: !_onlyFlagged,
-                          onTap: () => setState(() => _onlyFlagged = false),
+                        const StepHeader(step: 3, label: 'Review'),
+                        const SizedBox(height: 28),
+                        Text(
+                          'Review your dates',
+                          style: text.headlineMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: -0.5,
+                          ),
                         ),
-                        _FilterChip(
-                          label: 'Needs a look ($_flaggedCount)',
-                          selected: _onlyFlagged,
-                          onTap: () => setState(() => _onlyFlagged = true),
+                        const SizedBox(height: 8),
+                        Text(
+                          'We found ${_events.length} '
+                          '${_events.length == 1 ? 'item' : 'items'} in '
+                          '${widget.upload.file.name}. Check each one, then '
+                          'save them to your calendar.',
+                          style: text.bodyLarge?.copyWith(
+                            color: AppColors.stone,
+                            height: 1.4,
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        Wrap(
+                          spacing: 8,
+                          children: [
+                            _FilterChip(
+                              label: 'All (${_events.length})',
+                              selected: !_onlyFlagged,
+                              onTap: () => setState(() => _onlyFlagged = false),
+                            ),
+                            _FilterChip(
+                              label: 'Needs a look ($_flaggedCount)',
+                              selected: _onlyFlagged,
+                              onTap: () => setState(() => _onlyFlagged = true),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 14),
+                        if (shown.isEmpty)
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 24),
+                            child: Text(
+                              'Nothing needs a look right now.',
+                              style: TextStyle(color: AppColors.stone),
+                            ),
+                          ),
+                        for (final e in shown)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 10),
+                            child: _EventCard(
+                              event: e,
+                              included: !_excluded.contains(e.id),
+                              onToggle: (v) => setState(() {
+                                v
+                                    ? _excluded.remove(e.id)
+                                    : _excluded.add(e.id);
+                              }),
+                              onEdit: () => _edit(e),
+                            ),
+                          ),
+                        const SizedBox(height: 2),
+                        OutlinedButton.icon(
+                          onPressed: _addManually,
+                          icon: const Icon(Icons.add_rounded),
+                          label: const Text('Add a missing date'),
+                        ),
+                        const SizedBox(height: 24),
+                        _ReparseCard(
+                          controller: _hint,
+                          onReparse: () {
+                            final note = _hint.text.trim();
+                            widget.onReparse(note.isEmpty ? null : note);
+                          },
                         ),
                       ],
                     ),
-                    const SizedBox(height: 14),
-                    if (shown.isEmpty)
-                      const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 24),
-                        child: Text(
-                          'Nothing needs a look right now.',
-                          style: TextStyle(color: AppColors.stone),
-                        ),
-                      ),
-                    for (final e in shown)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 10),
-                        child: _EventCard(
-                          event: e,
-                          included: !_excluded.contains(e.id),
-                          onToggle: (v) => setState(() {
-                            v ? _excluded.remove(e.id) : _excluded.add(e.id);
-                          }),
-                          onEdit: () => _edit(e),
-                        ),
-                      ),
-                    const SizedBox(height: 2),
-                    OutlinedButton.icon(
-                      onPressed: _addManually,
-                      icon: const Icon(Icons.add_rounded),
-                      label: const Text('Add a missing date'),
+                  ),
+                  ListenableBuilder(
+                    listenable: _save,
+                    builder: (context, _) => _SaveBar(
+                      count: count,
+                      destination: _save.destination,
+                      destReady: _save.ready && !_saving,
+                      saving: _saving,
+                      onChoose: _openDestination,
+                      onPressed: _saveDates,
                     ),
-                    const SizedBox(height: 24),
-                    _ReparseCard(
-                      controller: _hint,
-                      onReparse: () {
-                        final note = _hint.text.trim();
-                        widget.onReparse(note.isEmpty ? null : note);
-                      },
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-              ListenableBuilder(
-                listenable: _save,
-                builder: (context, _) => _SaveBar(
-                  count: count,
-                  destination: _save.destination,
-                  destReady: _save.ready,
-                  onChoose: _openDestination,
-                  onPressed: () => widget.onSave(_included, _save.destination),
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),
@@ -238,14 +274,14 @@ class _SectionLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Text(
-        label.toUpperCase(),
-        style: const TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 1.4,
-          color: AppColors.stone,
-        ),
-      );
+    label.toUpperCase(),
+    style: const TextStyle(
+      fontSize: 12,
+      fontWeight: FontWeight.w700,
+      letterSpacing: 1.4,
+      color: AppColors.stone,
+    ),
+  );
 }
 
 class _FilterChip extends StatelessWidget {
@@ -261,19 +297,19 @@ class _FilterChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ChoiceChip(
-        label: Text(label),
-        selected: selected,
-        onSelected: (_) => onTap(),
-        showCheckmark: false,
-        selectedColor: AppColors.tan.withValues(alpha: 0.2),
-        backgroundColor: AppColors.paper.withValues(alpha: 0.8),
-        side: BorderSide(color: selected ? AppColors.tan : AppColors.line),
-        labelStyle: TextStyle(
-          fontWeight: FontWeight.w600,
-          color: selected ? AppColors.tanDeep : AppColors.stone,
-        ),
-        materialTapTargetSize: MaterialTapTargetSize.padded,
-      );
+    label: Text(label),
+    selected: selected,
+    onSelected: (_) => onTap(),
+    showCheckmark: false,
+    selectedColor: AppColors.tan.withValues(alpha: 0.2),
+    backgroundColor: AppColors.paper.withValues(alpha: 0.8),
+    side: BorderSide(color: selected ? AppColors.tan : AppColors.line),
+    labelStyle: TextStyle(
+      fontWeight: FontWeight.w600,
+      color: selected ? AppColors.tanDeep : AppColors.stone,
+    ),
+    materialTapTargetSize: MaterialTapTargetSize.padded,
+  );
 }
 
 class _EventCard extends StatelessWidget {
@@ -501,7 +537,10 @@ class _ReparseCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          OutlinedButton(onPressed: onReparse, child: const Text('Extract again')),
+          OutlinedButton(
+            onPressed: onReparse,
+            child: const Text('Extract again'),
+          ),
         ],
       ),
     );
@@ -515,6 +554,7 @@ class _SaveBar extends StatelessWidget {
     required this.destReady,
     required this.onChoose,
     required this.onPressed,
+    this.saving = false,
   });
 
   final int count;
@@ -522,6 +562,7 @@ class _SaveBar extends StatelessWidget {
   final bool destReady;
   final VoidCallback onChoose;
   final VoidCallback onPressed;
+  final bool saving;
 
   @override
   Widget build(BuildContext context) {
@@ -602,7 +643,10 @@ class _SaveBar extends StatelessWidget {
                         color: AppColors.tan,
                       ),
                     ),
-                    const Icon(Icons.chevron_right_rounded, color: AppColors.tan),
+                    const Icon(
+                      Icons.chevron_right_rounded,
+                      color: AppColors.tan,
+                    ),
                   ],
                 ),
               ),
@@ -612,12 +656,14 @@ class _SaveBar extends StatelessWidget {
           FilledButton(
             onPressed: ready ? onPressed : null,
             child: Text(
-              count == 0
+              saving
+                  ? 'Saving dates…'
+                  : count == 0
                   ? 'Nothing selected'
                   : 'Add $count ${count == 1 ? 'date' : 'dates'} to $name',
             ),
           ),
-          if (!ready) ...[
+          if (!ready && !saving) ...[
             const SizedBox(height: 8),
             Text(
               count == 0
@@ -636,9 +682,7 @@ class _SaveBar extends StatelessWidget {
 
 class _EditResult {
   const _EditResult.save(ExtractedEvent this.event) : delete = false;
-  const _EditResult.delete()
-      : event = null,
-        delete = true;
+  const _EditResult.delete() : event = null, delete = true;
 
   final ExtractedEvent? event;
   final bool delete;
@@ -675,8 +719,8 @@ class _EditSheetState extends State<_EditSheet> {
     final initial = _date.isBefore(first)
         ? first
         : _date.isAfter(last)
-            ? last
-            : _date;
+        ? last
+        : _date;
     final picked = await showDatePicker(
       context: context,
       initialDate: initial,
@@ -710,9 +754,8 @@ class _EditSheetState extends State<_EditSheet> {
         children: [
           Text(
             widget.isNew ? 'Add a date' : 'Edit date',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
+            style: Theme.of(context).textTheme.titleLarge
+                ?.copyWith(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 16),
           TextField(
@@ -774,17 +817,17 @@ class _EditSheetState extends State<_EditSheet> {
           FilledButton(
             onPressed: canSave
                 ? () => Navigator.of(context).pop(
-                      _EditResult.save(
-                        widget.event.copyWith(
-                          title: _title.text.trim(),
-                          course: _course.text.trim(),
-                          type: _type,
-                          date: _date,
-                          time: _time,
-                          clearTime: _time == null,
-                        ),
+                    _EditResult.save(
+                      widget.event.copyWith(
+                        title: _title.text.trim(),
+                        course: _course.text.trim(),
+                        type: _type,
+                        date: _date,
+                        time: _time,
+                        clearTime: _time == null,
                       ),
-                    )
+                    ),
+                  )
                 : null,
             child: Text(widget.isNew ? 'Add date' : 'Save changes'),
           ),

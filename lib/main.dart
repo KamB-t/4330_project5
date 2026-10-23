@@ -14,6 +14,7 @@ import 'screens/upload_screen.dart';
 import 'screens/history_screen.dart';
 import 'screens/account_screen.dart';
 import 'services/account_session.dart';
+import 'services/google_calendar.dart';
 import 'services/ics_builder.dart';
 import 'services/ics_delivery.dart';
 import 'services/syllabus_extractor.dart';
@@ -45,6 +46,8 @@ class FirebaseBootstrap extends StatefulWidget {
 class _FirebaseBootstrapState extends State<FirebaseBootstrap> {
   late Future<FirebaseAccountSession> _setup = _connect();
   FirebaseAccountSession? _session;
+  GoogleCalendar? _calendar;
+  String? _calendarAccountId;
   final Map<String, UploadHistoryStore> _stores = {};
   final SyllabusExtractor _extractor = ProxySyllabusExtractor(
     endpoint: Uri.parse(_extractUrl),
@@ -59,12 +62,14 @@ class _FirebaseBootstrapState extends State<FirebaseBootstrap> {
     }
     final auth = FirebaseAuth.instance;
     if (auth.currentUser == null) await auth.signInAnonymously();
-    return _session ??= FirebaseAccountSession(auth);
+    final session = _session ??= FirebaseAccountSession(auth);
+    return session;
   }
 
   @override
   void dispose() {
     _session?.dispose();
+    _calendar?.dispose();
     super.dispose();
   }
 
@@ -97,10 +102,16 @@ class _FirebaseBootstrapState extends State<FirebaseBootstrap> {
                 ),
               );
             }
+            if (_calendarAccountId != account.id) {
+              _calendar?.dispose();
+              _calendarAccountId = account.id;
+              _calendar = GoogleCalendar(authorize: session.authorizeCalendar);
+            }
             return SyllabusApp(
               // An identity switch discards routes, form state and old history.
               key: ValueKey(account.id),
               accountSession: session,
+              googleCalendar: _calendar,
               extractor: _extractor,
               pickFile: pickSyllabusFile,
               historyStore: _stores.putIfAbsent(
@@ -150,6 +161,7 @@ class SyllabusApp extends StatelessWidget {
     required this.pickFile,
     this.historyStore,
     this.accountSession,
+    this.googleCalendar,
   });
 
   final SyllabusExtractor extractor;
@@ -159,6 +171,7 @@ class SyllabusApp extends StatelessWidget {
   final Future<PickedSyllabus?> Function() pickFile;
   final UploadHistoryStore? historyStore;
   final AccountSession? accountSession;
+  final GoogleCalendar? googleCalendar;
 
   // Step 2: extraction. On success it replaces itself with the review.
   Route<void> _processing(BuildContext context, SyllabusUpload upload) {
@@ -189,9 +202,29 @@ class SyllabusApp extends StatelessWidget {
           _processing(context, upload.copyWith(hint: note)),
         ),
         onConnect: (destination) async {
-          // Signing in to this app does not grant access to a Google or
-          // Outlook calendar, and direct sync is not built yet. Say so instead
-          // of pretending to connect. The phone calendar works today.
+          if (destination == SaveDestination.google) {
+            final calendar = googleCalendar;
+            if (calendar == null) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text(
+                  'Google Calendar could not initialize. Reload the app and sign in on the Account tab.',
+                )),
+              );
+              return false;
+            }
+            try {
+              await calendar.connect();
+              return true;
+            } catch (error) {
+              if (!context.mounted) return false;
+              final message = error is StateError
+                  ? error.message.toString()
+                  : accountErrorMessage(error);
+              ScaffoldMessenger.of(context)
+                  .showSnackBar(SnackBar(content: Text(message)));
+              return false;
+            }
+          }
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
@@ -203,7 +236,7 @@ class SyllabusApp extends StatelessWidget {
           return false;
         },
         onSave: (saved, destination) =>
-            _saveToCalendar(context, upload, saved),
+            _saveToCalendar(context, upload, saved, destination),
       ),
     );
   }
@@ -214,6 +247,7 @@ class SyllabusApp extends StatelessWidget {
     BuildContext context,
     SyllabusUpload upload,
     List<ExtractedEvent> events,
+    SaveDestination destination,
   ) async {
     final nav = Navigator.of(context);
     final messenger = ScaffoldMessenger.of(context);
@@ -226,6 +260,24 @@ class SyllabusApp extends StatelessWidget {
     }
 
     try {
+      if (destination == SaveDestination.google) {
+        final calendar = googleCalendar;
+        if (calendar == null) {
+          say('Google Calendar is not configured.');
+          return;
+        }
+        await calendar.save(events, upload.timeZone);
+        if (!context.mounted) return;
+        nav.popUntil((route) => route.isFirst);
+        say(
+          'Saved ${events.length} ${events.length == 1 ? 'date' : 'dates'} to your primary Google Calendar.',
+        );
+        return;
+      }
+      if (destination != SaveDestination.device) {
+        say('This calendar connection is not available yet.');
+        return;
+      }
       final ics = IcsBuilder.build(events, timeZoneLabel: upload.timeZone);
       final name = _icsFileName(upload.file.name);
       final result = await deliverIcs(ics, name);
@@ -237,14 +289,26 @@ class SyllabusApp extends StatelessWidget {
           say('Opened $dates in your calendar app. Confirm there to add them.');
         case IcsDeliveryResult.downloaded:
           nav.popUntil((route) => route.isFirst);
-          say('Downloaded $name with $dates. Open it to add them to your calendar.');
+          say(
+            'Downloaded $name with $dates. Open it to add them to your calendar.',
+          );
         case IcsDeliveryResult.noApp:
           say('No calendar app found on this device to open the file.');
         case IcsDeliveryResult.failed:
           say('Could not create the calendar file. Please try again.');
       }
-    } catch (_) {
-      say('Could not create the calendar file. Please try again.');
+    } on CalendarSaveException catch (error) {
+      say(
+        '${error.saved} of ${events.length} dates saved. ${error.message} Retrying will skip dates already added.',
+      );
+    } catch (error) {
+      say(
+        destination == SaveDestination.google
+            ? (error is StateError
+                  ? error.message.toString()
+                  : accountErrorMessage(error))
+            : 'Could not create the calendar file. Please try again.',
+      );
     }
   }
 
