@@ -40,26 +40,123 @@ class _UploadScreenState extends State<UploadScreen> {
 
   bool get _ready => _file != null && _start != null;
 
+  bool _picking = false;
+
   Future<void> _pick() async {
+    if (_picking) return; // a second tap while the picker is open would fail
+    setState(() => _picking = true);
     try {
       final picked = await widget.onPickFile();
       if (picked != null && mounted) setState(() => _file = picked);
     } on SyllabusFileException catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      _toast(e.message);
+    } catch (_) {
+      _toast('Could not open the file picker. Please try again.');
+    } finally {
+      if (mounted) setState(() => _picking = false);
     }
   }
 
+  void _toast(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  // Flutter's date picker has a year list but no month list, so choosing a
+  // year leaves you on the same month with only arrows to move. Ask for the
+  // year and month first, then show the usual calendar for picking the day.
   Future<void> _pickDate() async {
     final now = DateTime.now();
+    final first = DateTime(now.year - 1);
+    final last = DateTime(now.year + 1, 12, 31);
+    final current = _start ?? now;
+
+    final month = await _pickYearAndMonth(current, first.year, last.year);
+    if (month == null || !mounted) return;
+
+    final daysInMonth = DateUtils.getDaysInMonth(month.year, month.month);
     final date = await showDatePicker(
       context: context,
-      initialDate: _start ?? now,
-      firstDate: DateTime(now.year - 1),
-      lastDate: DateTime(now.year + 2),
+      initialDate: DateTime(
+        month.year,
+        month.month,
+        current.day > daysInMonth ? daysInMonth : current.day,
+      ),
+      firstDate: first,
+      lastDate: last,
       helpText: 'SEMESTER START DATE',
     );
     if (date != null && mounted) setState(() => _start = date);
+  }
+
+  /// Returns the first day of the chosen month, or null if cancelled.
+  Future<DateTime?> _pickYearAndMonth(
+    DateTime current,
+    int firstYear,
+    int lastYear,
+  ) {
+    var year = current.year;
+    return showDialog<DateTime>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Semester start'),
+          content: SizedBox(
+            width: 320,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    IconButton(
+                      tooltip: 'Previous year',
+                      onPressed: year > firstYear
+                          ? () => setDialogState(() => year--)
+                          : null,
+                      icon: const Icon(Icons.chevron_left_rounded),
+                    ),
+                    Text(
+                      '$year',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                    ),
+                    IconButton(
+                      tooltip: 'Next year',
+                      onPressed: year < lastYear
+                          ? () => setDialogState(() => year++)
+                          : null,
+                      icon: const Icon(Icons.chevron_right_rounded),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (var m = 1; m <= 12; m++)
+                      ChoiceChip(
+                        label: Text(_months[m - 1]),
+                        selected: year == current.year && m == current.month,
+                        onSelected: (_) =>
+                            Navigator.pop(dialogContext, DateTime(year, m)),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _submit() {
