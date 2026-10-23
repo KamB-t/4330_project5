@@ -11,6 +11,8 @@ import '../models/syllabus.dart';
   if (text.isEmpty) return null;
   // "by 11:59 pm", "due at 5 PM", "before 9am"
   text = text.replaceFirst(RegExp(r'^(?:(?:due|by|at|before) )+'), '');
+  // "2:00 PM CT", "10 AM (EST)": the upload screen already sets the zone.
+  text = text.replaceFirst(RegExp(r' \(?(?:[ecmp][sd]?t|ak[sd]?t|hst?)\)?$'), '');
   text = text.split(RegExp(r'\s*[-–—]\s*')).first.trim();
   if (text == 'noon') return (hour: 12, minute: 0);
 
