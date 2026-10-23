@@ -178,7 +178,8 @@ class IcsBuilder {
     String stamp,
     Set<String> usedIds,
   ) {
-    final clock = parseClockTime(e.time);
+    final range = parseClockRange(e.time);
+    final clock = range?.start;
     final summary = e.course.trim().isEmpty ? e.title : '${e.course}: ${e.title}';
 
     final notes = <String>[
@@ -208,7 +209,18 @@ class IcsBuilder {
         clock.hour,
         clock.minute,
       );
-      final end = start.add(durationFor(e.type));
+      // A range in the syllabus ("9:30-10:45 AM") sets the end; otherwise use
+      // the usual length for this kind of event.
+      final rangeEnd = range?.end;
+      final end = rangeEnd == null
+          ? start.add(durationFor(e.type))
+          : DateTime.utc(
+              e.date.year,
+              e.date.month,
+              e.date.day,
+              rangeEnd.hour,
+              rangeEnd.minute,
+            );
       final tz = zone == null ? '' : ';TZID=${zone.tzid}';
       when
         ..add('DTSTART$tz:${_wallClock(start)}')
