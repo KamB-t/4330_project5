@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -52,9 +51,8 @@ class _FirebaseBootstrapState extends State<FirebaseBootstrap> {
   );
 
   Future<FirebaseAccountSession> _connect() async {
-    if (!kIsWeb) throw UnsupportedError('Firebase is configured for web only.');
     if (Firebase.apps.isEmpty) {
-      await Firebase.initializeApp(options: firebaseWebOptions);
+      await Firebase.initializeApp(options: currentFirebaseOptions());
     }
     final auth = FirebaseAuth.instance;
     if (auth.currentUser == null) await auth.signInAnonymously();
@@ -124,7 +122,7 @@ class _FirebaseBootstrapState extends State<FirebaseBootstrap> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         const Text(
-                          'Could not connect to your history. Check your connection and Firebase setup. Use Chrome; other platforms are not configured yet.',
+                          'Could not connect to your history. Check your connection and Firebase setup.',
                         ),
                         const SizedBox(height: 16),
                         FilledButton(

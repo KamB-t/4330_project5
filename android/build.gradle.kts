@@ -15,6 +15,16 @@ subprojects {
     val newSubprojectBuildDir: Directory = newBuildDir.dir(project.name)
     project.layout.buildDirectory.value(newSubprojectBuildDir)
 }
+// Some plugins (file_picker) still compile against an older Android SDK than
+// their dependencies need. Raise them to 36. This must stay above
+// evaluationDependsOn, which evaluates :app early.
+subprojects {
+    afterEvaluate {
+        extensions
+            .findByType(com.android.build.api.dsl.LibraryExtension::class.java)
+            ?.compileSdk = 36
+    }
+}
 subprojects {
     project.evaluationDependsOn(":app")
 }
