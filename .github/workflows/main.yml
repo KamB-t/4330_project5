@@ -44,3 +44,6 @@ jobs:
 
       - name: ✅ Run tests
         run: flutter test --coverage
+
+      - name: 🌐 Build web
+        run: flutter build web --release
