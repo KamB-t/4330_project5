@@ -2,10 +2,23 @@ import 'dart:convert';
 
 import '../models/syllabus.dart';
 
+/// A time of day.
+typedef ClockTime = ({int hour, int minute});
+
+final _rangeSplit = RegExp(r'\s*[-–—]\s*| to ');
+final _meridiem = RegExp(r'([ap])\.?\s*m?\.?$');
+
 /// Parses a clock time such as "2:00 PM", "11:59pm", "2 p.m.", "14:30",
-/// "by 5 PM", "noon" or "midnight". For a range ("2:00 PM - 3:15 PM") only the start is used. Returns
-/// null when it can't be read, and the event becomes an all-day event.
-({int hour, int minute})? parseClockTime(String? raw) {
+/// "by 5 PM", "noon" or "midnight". For a range ("2:00 PM - 3:15 PM") this
+/// is the start; see [parseClockRange]. Returns null when it can't be read,
+/// and the event becomes an all-day event.
+ClockTime? parseClockTime(String? raw) => parseClockRange(raw)?.start;
+
+/// Like [parseClockTime], but also returns the end of a range such as
+/// "9:30-10:45 AM" or "6 PM to 8 PM". The start borrows AM/PM from the end
+/// when it has none. [end] is null when there is no range or the end isn't
+/// after the start.
+({ClockTime start, ClockTime? end})? parseClockRange(String? raw) {
   if (raw == null) return null;
   var text = raw.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
   if (text.isEmpty) return null;
@@ -13,7 +26,34 @@ import '../models/syllabus.dart';
   text = text.replaceFirst(RegExp(r'^(?:(?:due|by|at|before) )+'), '');
   // "2:00 PM CT", "10 AM (EST)": the upload screen already sets the zone.
   text = text.replaceFirst(RegExp(r' \(?(?:[ecmp][sd]?t|ak[sd]?t|hst?)\)?$'), '');
-  text = text.split(RegExp(r'\s*[-–—]\s*')).first.trim();
+
+  final parts = text.split(_rangeSplit);
+  final startText = parts.first.trim();
+  final endText = parts.length > 1 ? parts[1].trim() : null;
+  final end = endText == null ? null : _readClock(endText);
+
+  var start = _readClock(startText);
+  final endMeridiem =
+      endText == null ? null : _meridiem.firstMatch(endText)?.group(1);
+  if (end != null && endMeridiem != null && !_meridiem.hasMatch(startText)) {
+    // "2-3:15 PM" starts at 2 PM, but "11-12:15 PM" starts at 11 AM.
+    var borrowed = _readClock('$startText ${endMeridiem}m');
+    if (borrowed != null && _minutes(borrowed) > _minutes(end)) {
+      borrowed = _readClock('$startText am');
+    }
+    start = borrowed ?? start;
+  }
+  if (start == null) return null;
+  return (
+    start: start,
+    end: end != null && _minutes(end) > _minutes(start) ? end : null,
+  );
+}
+
+int _minutes(ClockTime t) => t.hour * 60 + t.minute;
+
+/// Reads one time, with no range or extra words.
+ClockTime? _readClock(String text) {
   if (text == 'noon') return (hour: 12, minute: 0);
   // A midnight deadline means the end of that day, not its first minute.
   if (text == 'midnight') return (hour: 23, minute: 59);
