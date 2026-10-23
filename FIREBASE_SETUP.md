@@ -37,8 +37,41 @@ account for cross-device access. Flutter's temporary Chrome profile
 may also reset between debug sessions; use a persistent browser profile to test
 restart persistence.
 
-The file picker and AI extraction are real. Account connections and calendar
-save remain mock implementations.
+The file picker, AI extraction, account sign-in, calendar file export, and direct
+Google Calendar saving are implemented. Outlook direct sync is not available.
+
+## Direct Google Calendar saving
+
+1. In the Google Cloud project linked to Firebase (`proj5swsys`), enable the
+   **Google Calendar API** under APIs & Services > Library.
+2. In Google Auth Platform > Data Access (OAuth consent screen), add
+   `https://www.googleapis.com/auth/calendar.events.owned`. This allows event
+   access on calendars owned by the user; Termwise writes to the primary calendar.
+3. If the OAuth app is in Testing, add your Google account under Audience > Test
+   users. Public external use may require Google's OAuth verification.
+4. Keep Google sign-in enabled in Firebase Authentication and authorize your
+   web domain (including localhost for development). Use the existing Firebase
+   OAuth client and redirect URI; no client secret belongs in Flutter.
+
+Sign in with Google on the Account tab **before uploading/extracting**. At review,
+choose Change > Google Calendar > Connect, grant permission, then Use Google
+Calendar. The Add dates button uploads all selected events directly, without an
+ICS import. Nothing is sent to Calendar until that button is pressed.
+
+Calendar authorization is separate from app sign-in and uses reauthentication
+to keep the current account and review intact. Short-lived Google access tokens
+stay in memory and are cleared on account changes; they are not stored in
+Firestore. Expired or denied access asks for reconnection on the next save.
+Dates without a readable time are all-day events. Timed events use the selected
+time zone and default to one hour for exams or 30 minutes for other events,
+matching the ICS export.
+
+Content-derived Google event IDs prevent duplicate creation on retries, including
+after a partial failure. Identical events are skipped; editing event content
+creates a new event rather than changing a previously saved one. Saved events
+are not removed if the user later deselects them in Termwise.
+
+API reference: https://developers.google.com/workspace/calendar/api/v3/reference/events/insert
 
 ## AI extraction
 
